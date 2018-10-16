@@ -11,9 +11,9 @@ namespace FacialSimilarities
 {
   class Program
   {
-    const string subscriptionKey = "6666";
+    const string subscriptionKey = "";
 
-    const string uriBase = "666";
+    const string uriBase = "https://westcentralus.api.cognitive.microsoft.com/face/v1.0";
 
     static void Main(string[] args)
     {
@@ -26,7 +26,7 @@ namespace FacialSimilarities
       Console.WriteLine("Detect faces:");
       Console.Write(
           "Enter the path to an image with faces that you wish to analyze: ");
-      string imageFilePath = Console.ReadLine();
+      string imageFilePath = @"C:\dev\isdal-woman\FacialSimilarities\FacialSimilarities\isdal-woman-sketch.jpg";
 
       if (File.Exists(imageFilePath))
       {
@@ -36,6 +36,9 @@ namespace FacialSimilarities
           MakeAnalysisRequest(imageFilePath);
 
           var face1 = await GetFace(imageFilePath);
+          var face2 = await GetFace(imageFilePath);
+
+          var verify = await GetVerification("78b67095-0007-4a40-a7b9-b9d08274768e", "78b67095-0007-4a40-a7b9-b9d08274768e");
 
           Console.WriteLine("\nWait a moment for the results to appear.\n");
         }
@@ -69,7 +72,7 @@ namespace FacialSimilarities
           "emotion,hair,makeup,occlusion,accessories,blur,exposure,noise";
 
       // Assemble the URI for the REST API Call.
-      string uri = uriBase + "?" + requestParameters;
+      string uri = uriBase + "/detect" + "?" + requestParameters;
 
       HttpResponseMessage response;
 
@@ -135,6 +138,43 @@ namespace FacialSimilarities
       }
 
       return contentString;
+    }
+
+    static async Task<string> GetVerification(string faceOneId, string faceTwoId)
+    {
+      var contentString = string.Empty;
+
+      HttpClient client = new HttpClient();
+
+      // Request headers.
+      client.DefaultRequestHeaders.Add(
+          "Ocp-Apim-Subscription-Key", subscriptionKey);
+
+      client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+
+      string uri = uriBase + "/verify";
+
+      var requestContent = new VerifyRequest
+      {
+        faceId1 = faceOneId,
+        faceId2 = faceTwoId
+      };
+
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri)
+      {
+        Content = new StringContent("{\"faceId1\":\"78b67095-0007-4a40-a7b9-b9d08274768e\",\"faceId2\":\"78b67095-0007-4a40-a7b9-b9d08274768e\"}", Encoding.UTF8, "application/json")
+      };
+
+      var response = await client.SendAsync(request);
+
+      return await response.Content.ReadAsStringAsync();
+    }
+
+    internal class VerifyRequest
+    {
+      public string faceId1 { get; set; }
+      public string faceId2 { get; set; }
     }
 
     /// <summary>
