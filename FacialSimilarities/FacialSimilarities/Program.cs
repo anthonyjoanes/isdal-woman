@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Microsoft.Azure.CognitiveServices.Vision.Face;
+using Microsoft.Azure.CognitiveServices.Vision.Face.Models;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,13 +14,62 @@ namespace FacialSimilarities
 {
   class Program
   {
-    const string subscriptionKey = "";
+    const string subscriptionKey = "8974ba41ee8d4db9ac713e22d580937d";
 
-    const string uriBase = "https://westcentralus.api.cognitive.microsoft.com/face/v1.0";
+    const string uriBase = "https://westcentralus.api.cognitive.microsoft.com";
+
+    private static readonly IFaceClient faceClient = new FaceClient(
+            new ApiKeyServiceClientCredentials(subscriptionKey),
+            new DelegatingHandler[] { });
 
     static void Main(string[] args)
     {
-      MainAsync(args).Wait();
+      //MainAsync(args).Wait();
+
+      CallThing().Wait();
+    }
+
+    static async Task CallThing()
+    {
+      var test = await TryFaceClient();
+    }
+
+    static async Task<IList<DetectedFace>> TryFaceClient()
+    {
+      string firstImagePath = @"C:\dev\isdal-woman\FacialSimilarities\FacialSimilarities\isdal-woman-sketch.jpg";
+      string secondImagePath = @"C:\dev\isdal-woman\FacialSimilarities\FacialSimilarities\MRT.jpg";
+
+      faceClient.Endpoint = $"{uriBase}";
+      // The list of Face attributes to return.
+      IList<FaceAttributeType> faceAttributes =
+          new FaceAttributeType[]
+          {
+            FaceAttributeType.Gender , FaceAttributeType.Age,
+            FaceAttributeType.Smile  , FaceAttributeType.Emotion,
+            FaceAttributeType.Glasses, FaceAttributeType.Hair,
+            FaceAttributeType.Occlusion
+          };
+
+      try
+      {
+        using (var imageFileStream = File.OpenRead(firstImagePath))
+        {
+          // The second argument specifies to return the faceId, while
+          // the third argument specifies not to return face landmarks.
+          IList<DetectedFace> faceList =
+              await faceClient.Face.DetectWithStreamAsync(
+                  imageFileStream, true, true, faceAttributes);
+
+          return faceList;
+        }
+      }
+      catch(APIErrorException f)
+      {
+        Console.WriteLine(f.Message);
+        Console.ReadKey();
+      }
+
+      return new List<DetectedFace>();
     }
  
     static async Task MainAsync(string[] args)
@@ -26,19 +78,25 @@ namespace FacialSimilarities
       Console.WriteLine("Detect faces:");
       Console.Write(
           "Enter the path to an image with faces that you wish to analyze: ");
-      string imageFilePath = @"C:\dev\isdal-woman\FacialSimilarities\FacialSimilarities\isdal-woman-sketch.jpg";
 
-      if (File.Exists(imageFilePath))
+      string firstImagePath = @"C:\dev\isdal-woman\FacialSimilarities\FacialSimilarities\isdal-woman-sketch.jpg";
+      string secondImagePath = @"C:\dev\isdal-woman\FacialSimilarities\FacialSimilarities\MRT.jpg";
+
+      if (File.Exists(firstImagePath) && File.Exists(secondImagePath))
       {
         // Execute the REST API call.
         try
         {
-          MakeAnalysisRequest(imageFilePath);
+          var faceOneResponse = await GetFace(firstImagePath);
+          var faceTwoResponse = await GetFace(secondImagePath);
 
-          var face1 = await GetFace(imageFilePath);
-          var face2 = await GetFace(imageFilePath);
+          var faceOne = JsonConvert.DeserializeObject<FaceDetectResponse>(faceOneResponse);
+          var faceTwo = JsonConvert.DeserializeObject<FaceDetectResponse>(faceTwoResponse);
 
-          var verify = await GetVerification("78b67095-0007-4a40-a7b9-b9d08274768e", "78b67095-0007-4a40-a7b9-b9d08274768e");
+
+          var verify = await GetVerification(faceOne.FaceId, faceTwo.FaceId);
+
+          var test = JsonConvert.DeserializeObject<VerifyResponse>(verify);
 
           Console.WriteLine("\nWait a moment for the results to appear.\n");
         }
@@ -116,7 +174,7 @@ namespace FacialSimilarities
           "emotion,hair,makeup,occlusion,accessories,blur,exposure,noise";
 
       // Assemble the URI for the REST API Call.
-      string uri = uriBase + "?" + requestParameters;
+      string uri = uriBase + "/detect" + "?" + requestParameters;
 
       HttpResponseMessage response;
 
