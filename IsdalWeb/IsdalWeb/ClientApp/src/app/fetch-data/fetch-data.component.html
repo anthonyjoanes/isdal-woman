@@ -1,0 +1,24 @@
+<h1>Image Leaderboard</h1>
+
+<p>The current rankings of images tested.</p>
+
+<p *ngIf="!forecasts"><em>Loading...</em></p>
+
+<table class='table' *ngIf="forecasts">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Image</th>
+      <th>Description</th>
+      <th>Likeness</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let forecast of forecasts">
+      <td>{{ forecast.dateFormatted }}</td>
+      <td><img src="https://ichef.bbci.co.uk/news/660/cpsprodpb/10A1A/production/_96122186_isdalwomanoctobernewmouthandhairsmaller.jpg" height="100" /></td>
+      <td>The 2017 Isdal Woman sketch</td>
+      <td>{{ forecast.temperatureF }}</td>
+    </tr>
+  </tbody>
+</table>
